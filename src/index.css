@@ -2,3 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ✅ 채팅창 스크롤 바 스타일 */
+::-webkit-scrollbar {
+  width: 6px; /* 스크롤 바 너비 */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* 트랙 배경 투명 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 100, 0.5); /* 스크롤 바 색상 */
+  border-radius: 4px; /* 둥근 모서리 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.7); /* 호버 시 색상 변경 */
+}
+
+/* ✅ 부드러운 스크롤 효과 */
+html {
+  scroll-behavior: smooth;
+}
+
+.btn {
+  background-color: #333;
+  color: white;
+  padding: 12px 15px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-decoration: none;
+}
+
+.btn:hover {
+  background-color: #444;
+  transform: scale(1.05);
+}
+
