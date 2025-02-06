@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import ChatBox from "../components/ChatBox";
-import BackToHome from "../components/BackToHome";
 
 export default function Response() {
   const [messages, setMessages] = useState([
@@ -8,12 +8,11 @@ export default function Response() {
   ]);
   const chatContainerRef = useRef(null);
 
-  // 사용자 선택 핸들러
+  // 사용자 응답 핸들러
   const handleUserResponse = (response) => {
     const newMessages = [...messages, { type: "user", text: response }];
     setMessages(newMessages);
 
-    // 챗봇 응답 추가 (대처 방법 제공)
     setTimeout(() => {
       let botResponse;
       if (response === "계좌에서 돈이 빠져나갔어요.") {
@@ -46,12 +45,14 @@ export default function Response() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
-        <h1 className="text-2xl font-bold text-gray-900">대처방안</h1>
+      <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-6 flex flex-col justify-between h-[600px]">
+        
+        {/* ✅ 채팅창 상단에 제목 추가 */}
+        <h1 className="text-2xl font-bold text-center text-gray-900 mb-4">대처방안</h1>
 
-        {/* ✅ 채팅창 (스크롤 가능) */}
+        {/* ✅ 채팅창 */}
         <ChatBox>
-          <div ref={chatContainerRef} className="h-80 max-h-96 overflow-y-auto p-2 flex flex-col space-y-2">
+          <div ref={chatContainerRef} className="h-[450px] max-h-[500px] overflow-y-auto p-2 flex flex-col space-y-2">
             {messages.map((msg, index) => (
               <div
                 key={index}
@@ -63,26 +64,17 @@ export default function Response() {
               </div>
             ))}
           </div>
-
-          {/* 사용자 선택 버튼 */}
-          <div className="flex justify-between mt-3">
-            <button
-              onClick={() => handleUserResponse("계좌에서 돈이 빠져나갔어요.")}
-              className="bg-red-500 text-white py-2 px-3 rounded-lg text-sm hover:bg-red-600 transition"
-            >
-              돈이 빠져나감
-            </button>
-            <button
-              onClick={() => handleUserResponse("의심스러운 전화를 받았어요.")}
-              className="bg-blue-500 text-white py-2 px-3 rounded-lg text-sm hover:bg-blue-600 transition"
-            >
-              의심 전화
-            </button>
-          </div>
         </ChatBox>
 
-        {/* 메인으로 돌아가기 버튼 */}
-        <BackToHome />
+        {/* ✅ 하단 버튼 (현재 페이지 버튼 제거, 나머지 2개 유지) */}
+        <div className="mt-4 flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 w-full">
+          <Link to="/scamcheck" className="btn flex-1">
+            보이스피싱 판별
+          </Link>
+          <Link to="/roleplaying" className="btn flex-1">
+            롤플레잉
+          </Link>
+        </div>
       </div>
     </div>
   );
