@@ -1,11 +1,78 @@
-import React, { useState } from "react";
+import React, { useState, useEffect  } from "react";
 import { Link } from "react-router-dom";
 import Logo from "../components/Logo";
 
 export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [userInput, setUserInput] = useState("");
+  const [dataList, setDataList] = useState([]);
+
+  // 백엔드에서 데이터 가져오기
+  const fetchData = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/data-list/");
+      const data = await response.json();
+      setDataList(data);
+    } catch (error) {
+      console.error("❌ 데이터 가져오기 실패:", error);
+    }
+  };
+
+  // 입력 데이터 제출
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!userInput.trim()) return;
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/add-data/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: userInput }),
+      });
+
+      if (response.ok) {
+        setUserInput("");
+        fetchData(); // 데이터 새로고침
+      } else {
+        console.error("❌ 데이터 저장 실패");
+      }
+    } catch (error) {
+      console.error("❌ 서버 오류:", error);
+    }
+  };
+
+  // 페이지 로드 시 데이터 가져오기
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   return (
+    <div>
+      <div>입력창</div>
+      <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">입력창</h1>
+      <form onSubmit={handleSubmit} className="flex space-x-2 mb-4">
+        <input
+          type="text"
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+          placeholder="입력하세요"
+          className="border p-2 flex-1"
+        />
+        <button type="submit" className="bg-blue-500 text-white p-2 rounded">
+          저장
+        </button>
+      </form>
+
+      <h2 className="text-xl font-bold">저장된 데이터 목록:</h2>
+      <ul className="list-disc pl-6">
+        {dataList.map((item) => (
+          <li key={item.id}>{item.content}</li>
+        ))}
+      </ul>
+    </div>
     <div className="flex flex-col md:flex-row items-center justify-center min-h-screen bg-gray-100 px-6">
       {/* ✅ 왼쪽 - YouTube 썸네일 (클릭하면 동영상 재생) */}
       <div className="w-full md:w-1/2 flex justify-center items-center p-4">
@@ -65,5 +132,6 @@ export default function Home() {
         </div>
       </div>
     </div>
-  );
+  
+    </div>);
 }
