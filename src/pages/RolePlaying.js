@@ -7,24 +7,66 @@ export default function RolePlaying() {
     { type: "bot", text: "📢 보이스피싱 시나리오를 체험해보세요. 상대방의 질문에 답변하세요." },
   ]);
   const chatContainerRef = useRef(null);
+  const ws = useRef(null);
 
-  // 사용자 응답 핸들러
+  useEffect(() => {
+    ws.current = new WebSocket("ws://localhost:8000/ws/rp/");
+
+    ws.current.onopen = () => {
+      console.log("✅ WebSocket 연결 성공!");
+    };
+
+    ws.current.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("📩 WebSocket 응답:", data);
+
+      if (data.message) {
+        setMessages((prevMessages) => [...prevMessages, { type: "bot", text: data.message }]);
+      }
+    };
+
+    ws.current.onerror = (error) => {
+      console.error("⚠️ WebSocket 오류 발생:", error);
+    };
+
+    ws.current.onclose = () => {
+      console.log("🔴 WebSocket 연결 종료됨.");
+    };
+
+    return () => {
+      ws.current.close();
+    };
+  }, []);
+
   const handleUserResponse = (response) => {
-    const newMessages = [...messages, { type: "user", text: response }];
-    setMessages(newMessages);
+    if (response.trim() === "") return;
 
-    setTimeout(() => {
-      const botResponses = [
-        { type: "bot", text: "📞 (전화) '안녕하세요. 경찰청 금융사기팀입니다. 본인 확인이 필요합니다.'" },
-        { type: "bot", text: "💳 '고객님의 카드가 정지될 예정입니다. 계좌번호를 확인해 주세요.'" },
-        { type: "bot", text: "📢 '저희는 공공기관입니다. OTP 인증번호를 입력해 주세요.'" }
-      ];
-      const botResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
-      setMessages([...newMessages, botResponse]);
-    }, 2000);
+    setMessages((prevMessages) => [...prevMessages, { type: "user", text: response }]);
+    console.log("📤 WebSocket 전송:", response);
+    ws.current.send(JSON.stringify({ message: response }));
   };
 
-  // ✅ 채팅창 스크롤이 아래로 자동 이동하도록 설정
+  const handleVoiceInput = () => {
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      alert("음성 인식 기능이 지원되지 않습니다.");
+      return;
+    }
+
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "ko-KR";
+    recognition.start();
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      console.log("🎤 음성 입력 인식됨:", transcript);
+      handleUserResponse(transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("음성 인식 오류:", event.error);
+    };
+  };
+
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -32,20 +74,22 @@ export default function RolePlaying() {
   }, [messages]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-6 flex flex-col justify-between h-[600px]">
-        
-        {/* ✅ 채팅창 상단에 제목 추가 */}
-        <h1 className="text-2xl font-bold text-center text-gray-900 mb-4">롤플레잉</h1>
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white px-4">
+      <div className="w-full max-w-md bg-gray-800 shadow-lg rounded-lg p-6 flex flex-col justify-between h-[600px]">
+        <h1 className="text-2xl font-bold text-center text-white mb-4">롤플레잉 채팅</h1>
 
-        {/* ✅ 채팅창 */}
         <ChatBox>
-          <div ref={chatContainerRef} className="h-[450px] max-h-[500px] overflow-y-auto p-2 flex flex-col space-y-2">
+          <div
+            ref={chatContainerRef}
+            className="h-[450px] max-h-[500px] overflow-y-auto p-2 flex flex-col space-y-2"
+          >
             {messages.map((msg, index) => (
               <div
                 key={index}
                 className={`p-3 max-w-xs rounded-lg break-words ${
-                  msg.type === "user" ? "bg-blue-500 text-white self-end text-right" : "bg-gray-700 text-white self-start text-left"
+                  msg.type === "user"
+                    ? "bg-blue-500 text-white self-end text-right"
+                    : "bg-green-500 text-white self-start text-left"
                 }`}
               >
                 {msg.text}
@@ -54,12 +98,32 @@ export default function RolePlaying() {
           </div>
         </ChatBox>
 
-        {/* ✅ 하단 버튼 (현재 페이지 버튼 제거, 나머지 2개 유지) */}
+        <div className="flex items-center space-x-2 mt-4">
+          <input
+            type="text"
+            placeholder="메시지를 입력하세요..."
+            className="flex-1 px-4 py-2 rounded-md bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-400"
+            onKeyDown={(e) => e.key === "Enter" && handleUserResponse(e.target.value)}
+          />
+          <button
+            className="px-4 py-2 bg-green-500 rounded-md text-white hover:bg-green-400"
+            onClick={() => handleUserResponse(document.querySelector("input").value)}
+          >
+            보내기
+          </button>
+          <button
+            className="px-4 py-2 bg-blue-500 rounded-md text-white hover:bg-blue-400"
+            onClick={handleVoiceInput}
+          >
+            🎤
+          </button>
+        </div>
+
         <div className="mt-4 flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 w-full">
-          <Link to="/scamcheck" className="btn flex-1">
+          <Link to="/scamcheck" className="btn flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-center">
             보이스피싱 판별
           </Link>
-          <Link to="/response" className="btn flex-1">
+          <Link to="/response" className="btn flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-md text-center">
             대처방안
           </Link>
         </div>
