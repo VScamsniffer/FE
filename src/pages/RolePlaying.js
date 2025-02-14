@@ -10,7 +10,10 @@ export default function RolePlaying() {
   const ws = useRef(null);
 
   useEffect(() => {
-    ws.current = new WebSocket("ws://localhost:8000/ws/rp/");
+    // ws.current = new WebSocket("ws://localhost:8000/ws/rp/");
+    // ws.current = new WebSocket("ws://40.82.157.231:8000/ws/rp/");
+    // ws.current = new WebSocket("wss://40.82.157.231:8000/ws/rp/");
+    ws.current = new WebSocket("wss://vscamsniffer.work.gd/ws/rp/");
 
     ws.current.onopen = () => {
       console.log("✅ WebSocket 연결 성공!");

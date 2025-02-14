@@ -1,116 +1,66 @@
-const API_BASE_URL = "http://127.0.0.1:8000"; // Django 서버 주소
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import axios from "axios";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import RolePlaying from "./pages/RolePlaying";
+import ScamCheck from "./pages/ScamCheck";
+import Response from "./pages/Response";
+import SignUp from "./pages/SignUp";
 
-// ✅ 로그인 요청 (JWT 토큰 발급)
-export const login = async (username, password) => {
-    const response = await fetch(`${API_BASE_URL}/api/token/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-    });
+const API_BASE_URL = "http://127.0.0.1:8000"; // 서버 주소
 
-    if (!response.ok) {
-        throw new Error("로그인 실패");
-    }
+export default function App() {
+  const [user, setUser] = useState(null); // 로그인한 사용자 정보 상태 저장
 
-    const data = await response.json();
-    localStorage.setItem("accessToken", data.access);
-    localStorage.setItem("refreshToken", data.refresh);
-    return data;
-};
-
-// ✅ 소셜 로그인 요청 (토큰 저장 포함)
-// export const socialLogin = async (provider) => {
-//     try {
-//         const response = await fetch(`${API_BASE_URL}/accounts/${provider}/login/token/`, {
-//             method: "POST",
-//             headers: {
-//                 "Content-Type": "application/json",
-//             },
-//         });
-
-//         if (!response.ok) {
-//             throw new Error("소셜 로그인 실패");
-//         }
-
-//         const data = await response.json();
-//         console.log("🔍 소셜 로그인 응답:", data);
-
-//         // ✅ 토큰 저장
-//         localStorage.setItem("accessToken", data.access);
-//         localStorage.setItem("refreshToken", data.refresh);
-        
-//         return data;
-//     } catch (error) {
-//         console.error("❌ 소셜 로그인 오류:", error);
-//         throw error;
-//     }
-// };
-
-export const socialLogin = async (provider) => {
+  // 로그인된 사용자 정보 fetch
+  const fetchUserInfo = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/accounts/${provider}/login/token/`);
-      const data = await response.json();
-  
-      if (data.access) {
-        console.log("✅ 소셜 로그인 성공:", data);
-        localStorage.setItem("accessToken", data.access); // ✅ 토큰 저장
-        localStorage.setItem("refreshToken", data.refresh);
-      } else {
-        console.error("❌ 토큰이 반환되지 않았습니다.");
-      }
-    } catch (error) {
-      console.error("❌ 소셜 로그인 오류:", error);
-      throw error;
-    }
-  };
-  
-
-// ✅ 로그인된 사용자 정보 가져오기
-export const fetchUser = async () => {
-    const token = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('accessToken='))
-      ?.split('=')[1];  // ✅ 쿠키에서 토큰 가져오기
-  
-    if (!token) {
-      console.log("❌ 토큰이 없습니다.");
-      return null;
-    }
-  
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/user/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await axios.get(`${API_BASE_URL}/api/user/`, {
+        withCredentials: true, // 쿠키에 인증 정보 포함
       });
-  
-      if (!response.ok) {
-        console.warn("❌ 사용자 정보 가져오기 실패");
-        return null;
+
+      if (response.data) {
+        setUser(response.data); // 사용자 정보 설정
       }
-  
-      return await response.json();
     } catch (error) {
-      console.error("❌ 사용자 정보 가져오기 오류:", error);
-      return null;
+      console.error("로그인된 사용자 정보를 가져오는 데 실패했습니다.");
+      setUser(null); // 실패 시 사용자 정보 초기화
     }
   };
-  
 
-// ✅ 로그아웃 요청
-export const logout = async () => {
+  // 컴포넌트가 마운트될 때 사용자 정보 가져오기
+  useEffect(() => {
+    fetchUserInfo();
+  }, []);
+
+  // 로그아웃 요청
+  const logout = async () => {
     try {
-        await fetch(`${API_BASE_URL}/api/logout/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-        });
-
-        console.log("✅ 로그아웃 성공");
+      await axios.post(`${API_BASE_URL}/api/logout/`, {}, { withCredentials: true });
+      setUser(null); // 로그아웃 후 사용자 상태 초기화
     } catch (error) {
-        console.error("❌ 로그아웃 요청 오류:", error);
-    } finally {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/";  // 메인 페이지로 리디렉션
+      console.error("로그아웃 실패:", error);
     }
-};
+  };
+
+  return (
+    <Router>
+      <div className="flex flex-col min-h-screen">
+        <Header user={user} logout={logout} /> {/* Header에 사용자 정보와 로그아웃 버튼 전달 */}
+
+        <main className="flex-grow">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/roleplaying" element={<RolePlaying />} />
+            <Route path="/scamcheck" element={<ScamCheck />} />
+            <Route path="/response" element={<Response />} />
+            <Route path="/signup" element={<SignUp />} />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </Router>
+  );
+}
