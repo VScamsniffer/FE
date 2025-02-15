@@ -1,66 +1,132 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
-import Home from "./pages/Home";
-import RolePlaying from "./pages/RolePlaying";
-import ScamCheck from "./pages/ScamCheck";
-import Response from "./pages/Response";
-import SignUp from "./pages/SignUp";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+console.log("API BASE URL:", API_BASE_URL);
 
-const API_BASE_URL = "http://127.0.0.1:8000"; // 서버 주소
+// ✅ 로그인 요청 (JWT 토큰 발급)
+export const login = async (username, password) => {
+  const response = await fetch(`${API_BASE_URL}/api/token/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
 
-export default function App() {
-  const [user, setUser] = useState(null); // 로그인한 사용자 정보 상태 저장
+  if (!response.ok) throw new Error("로그인 실패");
 
-  // 로그인된 사용자 정보 fetch
-  const fetchUserInfo = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/user/`, {
-        withCredentials: true, // 쿠키에 인증 정보 포함
-      });
+  const data = await response.json();
+  localStorage.setItem("accessToken", data.access);
+  localStorage.setItem("refreshToken", data.refresh);
 
-      if (response.data) {
-        setUser(response.data); // 사용자 정보 설정
-      }
-    } catch (error) {
-      console.error("로그인된 사용자 정보를 가져오는 데 실패했습니다.");
-      setUser(null); // 실패 시 사용자 정보 초기화
+  return data;
+};
+
+// ✅ 사용자 정보 가져오기
+export const fetchUser = async () => {
+  console.log("🔄 fetchUser 함수 호출");
+  const token = localStorage.getItem("accessToken");
+
+  if (!token) {
+    console.log("❌ 액세스 토큰이 없습니다.");
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/user/`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    });
+
+    console.log("📥 fetchUser 응답 상태 코드:", response.status);
+
+    if (response.status === 401) {
+      console.warn("🔄 accessToken 만료: refreshToken으로 갱신 시도");
+      const newToken = await refreshAccessToken();
+      return newToken ? fetchUser() : null;
     }
-  };
 
-  // 컴포넌트가 마운트될 때 사용자 정보 가져오기
-  useEffect(() => {
-    fetchUserInfo();
-  }, []);
+    if (!response.ok) throw new Error("사용자 정보 가져오기 실패");
 
-  // 로그아웃 요청
-  const logout = async () => {
-    try {
-      await axios.post(`${API_BASE_URL}/api/logout/`, {}, { withCredentials: true });
-      setUser(null); // 로그아웃 후 사용자 상태 초기화
-    } catch (error) {
-      console.error("로그아웃 실패:", error);
+    const userData = await response.json();
+    console.log("✅ 사용자 정보:", userData);
+    return userData;
+
+  } catch (error) {
+    console.error("❌ 사용자 정보 가져오기 오류:", error);
+    return null;
+  }
+};
+
+// ✅ 토큰 갱신 요청
+export const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem("refreshToken");
+
+  if (!refreshToken) {
+    console.log("❌ refreshToken이 없습니다.");
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/token/refresh/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+
+    if (!response.ok) {
+      console.warn("❌ refreshToken 사용 불가");
+      return null;
     }
-  };
 
-  return (
-    <Router>
-      <div className="flex flex-col min-h-screen">
-        <Header user={user} logout={logout} /> {/* Header에 사용자 정보와 로그아웃 버튼 전달 */}
+    const data = await response.json();
+    localStorage.setItem("accessToken", data.access);
+    console.log("✅ 새 accessToken 저장:", data.access);
 
-        <main className="flex-grow">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/roleplaying" element={<RolePlaying />} />
-            <Route path="/scamcheck" element={<ScamCheck />} />
-            <Route path="/response" element={<Response />} />
-            <Route path="/signup" element={<SignUp />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
-  );
-}
+    return data.access;
+  } catch (error) {
+    console.error("❌ 토큰 갱신 오류:", error);
+    return null;
+  }
+};
+
+// ✅ 소셜 로그인 요청
+export const socialLogin = async (provider) => {
+  console.log(`🔄 ${provider} 로그인 요청`);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/accounts/${provider}/login/callback/`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (!response.ok) throw new Error("소셜 로그인 실패");
+
+    const data = await response.json();
+    localStorage.setItem("accessToken", data.access);
+    localStorage.setItem("refreshToken", data.refresh);
+
+    console.log("✅ 소셜 로그인 성공:", data);
+    return data;
+  } catch (error) {
+    console.error(`❌ ${provider} 로그인 오류:`, error);
+    throw error;
+  }
+};
+
+// ✅ 로그아웃 요청
+export const logout = async () => {
+  try {
+    await fetch(`${API_BASE_URL}/api/logout/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    console.log("✅ 로그아웃 성공");
+  } catch (error) {
+    console.error("❌ 로그아웃 요청 오류:", error);
+  } finally {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    window.location.href = "/";  // ✅ 메인 페이지로 리디렉션
+  }
+};
