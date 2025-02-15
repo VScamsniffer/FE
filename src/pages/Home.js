@@ -10,6 +10,9 @@ export default function Home() {
   // 백엔드에서 데이터 가져오기
   const fetchData = async () => {
     try {
+      // const response = await fetch("http://40.82.157.231:8000/api/data-list/");
+      // const response = await fetch("https://40.82.157.231:8000/api/data-list/");
+      //const response = await fetch("https://vscamsniffer.work.gd/api/data-list/");
       const response = await fetch("http://127.0.0.1:8000/api/data-list/");
       const data = await response.json();
       setDataList(data);
@@ -24,7 +27,9 @@ export default function Home() {
     if (!userInput.trim()) return;
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/add-data/", {
+      //const response = await fetch("http://40.82.157.231:8000/api/add-data/", {
+      //const response = await fetch("https://40.82.157.231:8000/api/add-data/", {
+      const response = await fetch("https://vscamsniffer.work.gd/api/add-data/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
