@@ -6,14 +6,21 @@ export default function RolePlaying() {
   const [messages, setMessages] = useState([
     { type: "bot", text: "📢 보이스피싱 시나리오를 체험해보세요. 상대방의 질문에 답변하세요." },
   ]);
+  const [scenario, setScenario] = useState(null);
   const chatContainerRef = useRef(null);
   const ws = useRef(null);
+  const audioPlayerRef = useRef(null);
+
+  const scenarios = [
+    { id: 1, name: "경찰 사칭", description: "경찰 사칭" },
+    { id: 2, name: "은행 사칭", description: "은행 사칭" },
+    { id: 3, name: "대출 사칭", description: "대출 사칭" },
+    { id: 4, name: "가족 납치", description: "가족 납치" },
+    { id: 5, name: "협박", description: "협박" }
+  ];
 
   useEffect(() => {
-    // ws.current = new WebSocket("ws://localhost:8000/ws/rp/");
-    // ws.current = new WebSocket("ws://40.82.157.231:8000/ws/rp/");
-    // ws.current = new WebSocket("wss://40.82.157.231:8000/ws/rp/");
-    ws.current = new WebSocket("wss://vscamsniffer.work.gd/ws/rp/");
+    ws.current = new WebSocket("ws://localhost:8000/ws/rp/");
 
     ws.current.onopen = () => {
       console.log("✅ WebSocket 연결 성공!");
@@ -24,7 +31,14 @@ export default function RolePlaying() {
       console.log("📩 WebSocket 응답:", data);
 
       if (data.message) {
-        setMessages((prevMessages) => [...prevMessages, { type: "bot", text: data.message }]);
+        setMessages(prevMessages => [...prevMessages, { type: "bot", text: data.message }]);
+      }
+      if (data.audio) {
+        const audioPlayer = audioPlayerRef.current;
+        if (audioPlayer) {
+          audioPlayer.src = data.audio;
+          audioPlayer.play();
+        }
       }
     };
 
@@ -37,16 +51,52 @@ export default function RolePlaying() {
     };
 
     return () => {
-      ws.current.close();
+      if (ws.current) {
+        ws.current.close();
+      }
     };
   }, []);
 
-  const handleUserResponse = (response) => {
-    if (response.trim() === "") return;
+  const handleScenarioSelect = (selectedScenario) => {
+    setScenario(selectedScenario);
+    
+    // Send initial scenario selection to backend
+    const scenarioPayload = {
+      type: "scenario_select",
+      scenario: selectedScenario.name
+    };
+    
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(scenarioPayload));
+    }
 
-    setMessages((prevMessages) => [...prevMessages, { type: "user", text: response }]);
-    console.log("📤 WebSocket 전송:", response);
-    ws.current.send(JSON.stringify({ message: response }));
+    setMessages(prevMessages => [
+      ...prevMessages,
+      { type: "bot", text: `${selectedScenario.name} 시나리오를 선택하셨습니다. 시작해볼까요?` }
+    ]);
+  };
+
+  const handleUserResponse = (response) => {
+    if (!response.trim()) return;
+
+    // Add user message to chat
+    setMessages(prevMessages => [...prevMessages, { type: "user", text: response }]);
+
+    // Send message to backend with scenario context
+    if (scenario && ws.current && ws.current.readyState === WebSocket.OPEN) {
+      const messagePayload = {
+        type: "user_message",
+        message: response,
+        scenario: scenario.name
+      };
+      ws.current.send(JSON.stringify(messagePayload));
+    }
+
+    // Clear input field
+    const inputField = document.querySelector("input");
+    if (inputField) {
+      inputField.value = "";
+    }
   };
 
   const handleVoiceInput = () => {
@@ -96,9 +146,32 @@ export default function RolePlaying() {
                 }`}
               >
                 {msg.text}
+                {msg.audio && (
+                  <audio ref={audioPlayerRef} controls>
+                    <source src={msg.audio} type="audio/mpeg" />
+                    해당 브라우저에서 음성읽기 기능을 제공하지 않습니다.
+                  </audio>
+                )}
               </div>
             ))}
           </div>
+
+          {!scenario && (
+            <div className="scenario-selection mt-4 p-4 bg-gray-800 rounded-md">
+              <h3 className="text-xl text-white">시나리오를 선택하세요:</h3>
+              <div className="space-y-2 mt-3">
+                {scenarios.map((scenarioOption) => (
+                  <button
+                    key={scenarioOption.id}
+                    onClick={() => handleScenarioSelect(scenarioOption)}
+                    className="p-2 bg-blue-500 text-white rounded-md w-full"
+                  >
+                    {scenarioOption.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </ChatBox>
 
         <div className="flex items-center space-x-2 mt-4">
