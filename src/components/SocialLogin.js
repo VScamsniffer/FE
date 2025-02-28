@@ -7,7 +7,9 @@ import naverLogo from "../assets/naver.svg";
 export default function SocialLogin() {
   
   const handleSocialLogin = (provider) => {
-    const loginUrl = `http://127.0.0.1:8000/accounts/${provider}/login/`;
+    // const loginUrl = `http://127.0.0.1:8000/accounts/${provider}/login/`;
+    const loginUrl = `https://vscamsniffer.work.gd/accounts/${provider}/login/`;
+
     window.location.href = loginUrl; // ✅ 페이지 리디렉션을 통해 소셜 로그인 수행
   };
 

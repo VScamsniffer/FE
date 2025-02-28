@@ -12,8 +12,8 @@ export default function Response() {
   const [isConnected, setIsConnected] = useState(false);
   
   const scenarios = [
-    { id: 1, name: "통장에서 돈이 인출되었어요.", description: "통장에서 돈이 인출되었어요." },
-    { id: 2, name: "개인정보 및 신용정보를 누출했어요.", description: "개인정보 및 신용정보를 누출했어요." }
+    { id: 1, name: "보이스피싱을 당해서 통장에서 돈이 인출되었어.", description: "통장에서 돈이 인출되었어요." },
+    { id: 2, name: "보이스피싱을 당해서 계좌정보가 유출되었어.", description: "개인정보 및 신용정보를 누출했어요." }
   ];
 
   useEffect(() => {
@@ -26,7 +26,12 @@ export default function Response() {
   }, []);
 
   const connectWebSocket = () => {
-    ws.current = new WebSocket("ws://localhost:8000/ws/solution/");
+    // ws.current = new WebSocket("http://40.82.157.231:8000/ws/solution/");
+    // ws.current = new WebSocket("https://40.82.157.231:8000/ws/solution/");
+    // ws.current = new WebSocket("https://vscamsniffer.work.gd/ws/solution/");
+    // ws.current = new WebSocket("ws://localhost:8000/ws/solution/");
+    ws.current = new WebSocket("wss://vscamsniffer.work.gd/ws/solution/");
+
 
     ws.current.onopen = () => {
       console.log("✅ WebSocket 연결 성공!");
@@ -65,20 +70,16 @@ export default function Response() {
     };
   };
 
-  const handleScenarioSelect = (selectedScenario) => {
-    setScenario(selectedScenario);
-    const userMessage = {
-      type: "user",
-      text: selectedScenario.name
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    // WebSocket으로 선택된 시나리오 전송
+  const handleScenarioSelect = (scenarioOption) => {
     if (ws.current && isConnected) {
-      ws.current.send(JSON.stringify({
-        selected_option: selectedScenario.name
-      }));
+      ws.current.send(
+        JSON.stringify({
+          type: "scenario_select",
+          scenario: scenarioOption.name, // 선택한 시나리오 이름 전송
+        })
+      );
     }
+    setScenario(scenarioOption.name); // UI 업데이트
   };
 
   const handleUserResponse = (response) => {
@@ -158,7 +159,6 @@ export default function Response() {
             ))}
           </div>
         )}
-
         <div className="mt-4 flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 w-full">
           <Link to="/scamcheck" className="btn flex-1">
             보이스피싱 판별
