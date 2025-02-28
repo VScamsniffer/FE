@@ -1,4 +1,6 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+// const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.REACT_APP_API_URL || "https://vscamsniffer.work.gd";
+
 console.log("API BASE URL:", API_BASE_URL);
 
 // ✅ 로그인 요청 (JWT 토큰 발급)
@@ -19,7 +21,8 @@ export const login = async (username, password) => {
 };
 
 // ✅ 사용자 정보 가져오기
-export const fetchUser = async () => {
+const MAX_RETRY = 3;
+export const fetchUser = async (retryCount = 0) => {
   console.log("🔄 fetchUser 함수 호출");
   const token = localStorage.getItem("accessToken");
 
@@ -41,11 +44,15 @@ export const fetchUser = async () => {
     console.log("📥 fetchUser 응답 상태 코드:", response.status);
 
     if (response.status === 401) {
-      console.warn("🔄 accessToken 만료: refreshToken으로 갱신 시도");
-      const newToken = await refreshAccessToken();
-      return newToken ? fetchUser() : null;
+      if (retryCount < MAX_RETRY) {
+        console.warn("🔄 accessToken 만료: refreshToken으로 갱신 시도");
+        const newToken = await refreshAccessToken();
+        return newToken ? fetchUser(retryCount + 1) : null;
+      } else {
+        console.error("❌ 최대 재시도 횟수 초과");
+        return null;
+      }
     }
-
     if (!response.ok) throw new Error("사용자 정보 가져오기 실패");
 
     const userData = await response.json();
