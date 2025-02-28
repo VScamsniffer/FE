@@ -8,7 +8,13 @@ export default function ScamCheck() {
   ]);
   const chatContainerRef = useRef(null);
 
-  // 파일 업로드 핸들러
+  // ✅ CSRF 토큰 가져오기 함수
+  const getCSRFToken = () => {
+    const csrfCookie = document.cookie.split("; ").find(row => row.startsWith("csrftoken="));
+    return csrfCookie ? csrfCookie.split("=")[1] : "";
+  };
+
+  // ✅ 파일 업로드 핸들러
   const handleFileChange = (event) => {
     const uploadedFile = event.target.files[0];
     if (!uploadedFile) return;
@@ -17,34 +23,45 @@ export default function ScamCheck() {
     const newMessages = [...messages, { type: "user", text: `📁 ${uploadedFile.name}` }];
     setMessages(newMessages);
 
-    // 파일 분석 실행
-    analyzeFile(newMessages, uploadedFile);
+    // 서버에 파일 업로드
+    uploadFileToServer(newMessages, uploadedFile);
   };
 
-  // 보이스피싱 판별 (임시 로직)
-  const analyzeFile = (currentMessages, file) => {
-    if (!file) return;
+  // ✅ 서버에 파일 업로드 및 결과 표시
+  const uploadFileToServer = async (currentMessages, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+  
+    try {
+      const response = await fetch("http://127.0.0.1:8000/upload-audio/", {
+        method: "POST",
+        body: formData,
+      });
 
-    setTimeout(() => {
-      const isScam = Math.random() > 0.5;
-      const resultMessage = isScam
-        ? { type: "bot", text: "🔴 보이스피싱 가능성이 있습니다. 주의하세요!" }
-        : { type: "bot", text: "🟢 정상적인 통화로 판단됩니다." };
-
-      const recommendationMessage = isScam
-        ? {
-            type: "bot",
-            text: `🚨 권장 조치:
-            1️⃣ 경찰(112) 또는 금융감독원(1332)에 신고하세요.
-            2️⃣ 해당 은행 고객센터에 즉시 연락하여 계좌 지급정지를 요청하세요.
-            3️⃣ 개인정보 유출 여부를 확인하고, 계정 보안을 강화하세요.
-            4️⃣ 추가 피해를 방지하기 위해 가족 및 지인들에게 알리세요.`,
-          }
-        : { type: "bot", text: "✅ 추가 검토가 필요하면 전문가 상담을 받아보세요." };
-
-      setMessages([...currentMessages, resultMessage, recommendationMessage]);
-    }, 2000);
+      const data = await response.json(); // 응답을 JSON으로 변환
+  
+      if (response.ok) {
+        const resultMessage = {
+          type: "bot",
+          text: `🟢 파일이 성공적으로 업로드되었습니다. [파일 보기](${data.file_url})`,
+        };
+        setMessages([...currentMessages, resultMessage]);
+      } else {
+        const errorMessage = {
+          type: "bot",
+          text: `🔴 오류: ${data.error}`, // 서버에서 반환한 오류 메시지를 그대로 표시
+      };
+      setMessages([...currentMessages, errorMessage]);
+  }
+    } catch (error) {
+      const errorMessage = {
+        type: "bot",
+        text: "🔴 파일 업로드 중 오류가 발생했습니다. 다시 시도해주세요.",
+      };
+      setMessages([...currentMessages, errorMessage]);
+    }
   };
+  
 
   // ✅ 채팅창 스크롤이 아래로 자동 이동하도록 설정
   useEffect(() => {
@@ -57,10 +74,8 @@ export default function ScamCheck() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
       <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-6 flex flex-col justify-between h-[600px]">
         
-        {/* ✅ 채팅창 상단에 제목 추가 */}
         <h1 className="text-2xl font-bold text-center text-gray-900 mb-4">보이스피싱 판별</h1>
 
-        {/* ✅ 채팅창 */}
         <ChatBox>
           <div ref={chatContainerRef} className="h-[450px] max-h-[500px] overflow-y-auto p-2 flex flex-col space-y-2">
             {messages.map((msg, index) => (
@@ -75,7 +90,6 @@ export default function ScamCheck() {
             ))}
           </div>
 
-          {/* ✅ 파일 업로드 버튼 */}
           <div className="flex justify-end mt-3">
             <input
               type="file"
@@ -93,7 +107,6 @@ export default function ScamCheck() {
           </div>
         </ChatBox>
 
-        {/* ✅ 하단 버튼 (현재 페이지 버튼 제거, 나머지 2개 유지) */}
         <div className="mt-4 flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 w-full">
           <Link to="/roleplaying" className="btn flex-1">
             롤플레잉
